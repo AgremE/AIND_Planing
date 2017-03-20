@@ -33,7 +33,7 @@ class AirCargoProblem(Problem):
         self.airports = airports
         self.actions_list = self.get_actions()
 
-    def get_actions(self):
+    def get_actions(self): 
         '''
         This method creates concrete actions (no variables) for all actions in the problem
         domain action schema and turns them into complete Action objects as defined in the
@@ -59,6 +59,34 @@ class AirCargoProblem(Problem):
             '''
             loads = []
             # TODO create all load ground actions from the domain Load action
+            for a in self.airports:
+                for p in self.planes:
+                    for c in self.cargos:
+                        # cargo At airport, plane At airport.
+                        expression_start = "At("
+                        expression_1 = expression_start + c + "," + a + ")"
+                        expression_2 = expression_start + p + "," + a + ")"
+                        precond = [
+                            expr(expression_1),
+                            expr(expression_2)
+                        ]
+                        precond_neg = []
+                        # cargo In plane
+                        expression_3 = expression_start + c + "," + p + ")"
+                        effect_in = [
+                            expr(expression_3)
+                        ]
+                        # remove cargo At airport
+                        expression_4 = expression_start + c + "," + a + ")"
+                        effect_out = [
+                            expr(expression_4)
+                        ]
+                        expression_5 = "Load(" + c + "," + p + "," + a +")" 
+                        load = Action(expr(expression_5),
+                                      [precond, precond_neg],
+                                      [effect_in, effect_out])
+
+                        loads.append(load)
             return loads
 
         def unload_actions():
@@ -68,6 +96,29 @@ class AirCargoProblem(Problem):
             '''
             unloads = []
             # TODO create all Unload ground actions from the domain Unload action
+            for a in self.airports:
+                for p in self.planes:
+                    for c in self.cargos:
+                        # In plane, plane At airport.
+
+                        expression_1 = "At(" + c + "," + p + ")"
+                        expression_2 = "At(" + p + "," + a + ")"
+
+                        precond_pos = [
+                            expr(expression_1),
+                            expr(expression_2)
+                        ]
+
+                        precond_neg = []
+
+                        effect_add = [expr("At(" + c + "," + a + ")")]
+                        effect_rem = [expr("At(" + c + "," + p + ")")]
+                        expression_3 = expr("Unload("+c+","+p+","+a+")")
+
+                        unload = Action(expression_3,
+                                      [precond_pos, precond_neg],
+                                      [effect_add, effect_rem])
+                        unloads.append(unload)
             return unloads
 
         def fly_actions():
@@ -93,6 +144,7 @@ class AirCargoProblem(Problem):
 
         return load_actions() + unload_actions() + fly_actions()
 
+    # Need to check again
     def actions(self, state: str) -> list:
         """ Return the actions that can be executed in the given state.
 
@@ -103,8 +155,21 @@ class AirCargoProblem(Problem):
         """
         # TODO implement
         possible_actions = []
+        kb = PropKB()
+        kb.tell(decode_state(state, self.state_map).pos_sentence())
+        for action in self.actions_list:
+            is_possible = True
+            for clause in action.precond_pos:
+                if clause not in kb.clauses:
+                    is_possible = False
+            for clause in action.precond_neg:
+                if clause in kb.clauses:
+                    is_possible = False
+            if is_possible:
+                possible_actions.append(action)
         return possible_actions
 
+    # Need to check again
     def result(self, state: str, action: Action):
         """ Return the state that results from executing the given
         action in the given state. The action must be one of
@@ -116,6 +181,21 @@ class AirCargoProblem(Problem):
         """
         # TODO implement
         new_state = FluentState([], [])
+
+        old_state = decode_state(state, self.state_map)
+        for fluent in old_state.pos:
+            if fluent not in action.effect_rem:
+                new_state.pos.append(fluent)
+        for fluent in action.effect_add:
+            if fluent not in new_state.pos:
+                new_state.pos.append(fluent)
+        for fluent in old_state.neg:
+            if fluent not in action.effect_add:
+                new_state.neg.append(fluent)
+        for fluent in action.effect_rem:
+            if fluent not in new_state.neg:
+                new_state.neg.append(fluent)
+
         return encode_state(new_state, self.state_map)
 
     def goal_test(self, state: str) -> bool:
@@ -147,7 +227,8 @@ class AirCargoProblem(Problem):
         pg = PlanningGraph(self, node.state)
         pg_levelsum = pg.h_levelsum()
         return pg_levelsum
-
+        
+    #Need to check again
     def h_ignore_preconditions(self, node: Node):
         '''
         This heuristic estimates the minimum number of actions that must be
@@ -157,6 +238,10 @@ class AirCargoProblem(Problem):
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
         count = 0
+        num_states = len(self.state_map)
+        for i in range(0, num_states):
+            if self.state_map[i] in self.goal and node.state[i] == 'F':
+                count += 1
         return count
 
 
