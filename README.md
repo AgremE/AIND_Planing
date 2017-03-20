@@ -104,7 +104,7 @@ single available plane, P1, from one airport to another, SFO to JFK.
 ![state space](images/statespace.png)
 In this simple example, there are five fluents, or state variables, which means our state 
 space could be as large as ![2to5](images/twotofive.png). Note the following:
->- While the initial state defines every fluent explicitly, in this case mapped to **TTFFF**, the goal may 
+>- While the initial state defines every fluent explicitly, in this case mapped to **TTFFF**, the goal may 	
 be a set of states.  Any state that is `True` for the fluent `At(C1,JFK)` meets the goal.
 >- Even though PDDL uses variable to describe actions as "action schema", these problems
 are not solved with First Order Logic.  They are solved with Propositional logic and must
